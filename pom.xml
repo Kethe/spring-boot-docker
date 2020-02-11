@@ -5,7 +5,7 @@
 
 	<groupId>guru.springframework</groupId>
 	<artifactId>spring-boot-docker</artifactId>
-	<version>0.0.3-SNAPSHOT</version>
+	<version>0.0.4-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>spring-boot-docker</name>
@@ -23,11 +23,11 @@
 		<java.version>1.8</java.version>
 
 		<!--set this to your docker acct name-->
-		<docker.image.prefix>springframeworkguru</docker.image.prefix>
+		<docker.image.prefix>kethe</docker.image.prefix>
 
 		<!--Set to name of project-->
 		<docker.image.name>springbootdocker</docker.image.name>
-
+		<docker.startParallel>true</docker.startParallel>
 	</properties>
 
 	<dependencies>
@@ -66,12 +66,13 @@
 			<plugin>
 				<groupId>io.fabric8</groupId>
 				<artifactId>docker-maven-plugin</artifactId>
-				<version>0.20.0</version>
+				<version>0.31.0</version>
 
 				<configuration>
 
-                    <!--<dockerHost>http://127.0.0.1:2375</dockerHost>-->
-                    <dockerHost>unix:///var/run/docker.sock</dockerHost>
+					<dockerHost>http://192.168.99.100:2375</dockerHost>
+					<!--<dockerHost>unix:///var/run/docker.sock</dockerHost>-->
+<!--					<dockerHost>npipe:////./pipe/docker_engine</dockerHost>-->
 
                     <verbose>true</verbose>
 					<images>
@@ -93,7 +94,80 @@
                                 <ports>
                                     <port>8080:8080</port>
                                 </ports>
+								<links>
+									<link>myrabbitmq:rabbitmq</link>
+								</links>
+								<env>
+									<SPRING_RABBITMQ_HOST>rabbitmq</SPRING_RABBITMQ_HOST>
+								</env>
+								<dependsOn>
+									<container>myrabbitmq</container>
+									<container>pageviewservice</container>
+								</dependsOn>
                             </run>
+						</image>
+						<!--mysql container kethe-->
+						<image>
+							<name>mysql</name>
+							<alias>mysqldb</alias>
+							<run>
+								<ports>
+									<port>3306:3306</port>
+								</ports>
+								<env>
+									<MYSQL_DATABASE>pageviewservice</MYSQL_DATABASE>
+									<MYSQL_ALLOW_EMPTY_PASSWORD>yes</MYSQL_ALLOW_EMPTY_PASSWORD>
+								</env>
+								<wait>
+									<time>1000</time>
+								</wait>
+							</run>
+						</image>
+						<!--rabbitmq container-->
+						<image>
+							<name>rabbitmq</name>
+							<alias>myrabbitmq</alias>
+							<run>
+								<ports>
+									<port>5671</port>
+									<port>5672</port>
+									<port>4369</port>
+									<port>25672</port>
+								</ports>
+								<wait>
+									<time>1000</time>
+								</wait>
+							</run>
+						</image>
+						<image>
+							<name>kethe/pageviewservice</name>
+							<alias>pageviewservice</alias>
+							<run>
+								<ports>
+									<port>8081:8081</port>
+								</ports>
+								<links>
+									<link>myrabbitmq:rabbitmq</link>
+									<link>mysqldb:mysqldb</link>
+								</links>
+								<env>
+									<SPRING_DATASOURCE_URL>jdbc:mysql://mysqldb:3306/pageviewservice</SPRING_DATASOURCE_URL>
+									<SPRING_PROFILES_ACTIVE>mysql</SPRING_PROFILES_ACTIVE>
+									<SPRING_RABBITMQ_HOST>rabbitmq</SPRING_RABBITMQ_HOST>
+								</env>
+								<dependsOn>
+									<container>myrabbitmq</container>
+									<container>mysqldb</container>
+								</dependsOn>
+								<wait>
+									<http>
+										<url>http://192.168.99.100:8081/actuator/health</url>
+										<method>GET</method>
+										<status>200...399</status>
+									</http>
+									<time>120000</time>
+								</wait>
+							</run>
 						</image>
 					</images>
 				</configuration>

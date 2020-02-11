@@ -1,4 +1,4 @@
-FROM openjdk
+FROM openjdk:8u242-jdk-slim
 
 VOLUME /tmp
 ADD maven/${fileName}.jar ${fileName}.jar
